@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Banquero AI - Elite Edition</title>
+    
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <script src="config.js"></script>
+    
+    <script type="text/javascript">
+        (function() {
+            if (typeof ENV !== 'undefined') {
+                emailjs.init(ENV.PUBLIC_KEY);
+            }
+        })();
+    </script>
+
+    <style>
+        :root { 
+            --accent: #00d4ff; --safe: #a855f7; --error: #ff3b30; 
+            --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            margin: 0; height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; 
+            background: radial-gradient(circle at center, #111 0%, #000 100%);
+            font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden;
+        }
+        .config-icon { position: absolute; top: 30px; right: 30px; font-size: 24px; cursor: pointer; z-index: 200; opacity: 0.7; transition: 0.3s; }
+        .config-icon:hover { transform: rotate(90deg); opacity: 1; }
+
+        #config-panel {
+            position: fixed; top: 0; right: -100%; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95); z-index: 150;
+            display: flex; flex-direction: column; align-items: center;
+            padding-top: 50px; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(20px); overflow-y: auto;
+        }
+        #config-panel.open { right: 0; }
+
+        .section { width: 85%; max-width: 350px; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        h3 { font-weight: 200; color: var(--accent); font-size: 14px; text-transform: uppercase; letter-spacing: 2px; }
+
+        input {
+            padding: 14px; border-radius: 12px; border: 1px solid var(--border);
+            background: var(--glass); color: white; margin: 5px 0; width: 100%;
+            box-sizing: border-box; font-size: 14px; outline: none;
+        }
+
+        .cards-container { display: flex; gap: 15px; width: 100%; max-width: 500px; padding: 20px; overflow-x: auto; scrollbar-width: none; }
+        .card {
+            min-width: 200px; height: 110px; background: var(--glass);
+            padding: 20px; border-radius: 24px; border: 1px solid var(--border);
+            transition: 0.4s; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .card.active { border-color: var(--accent); background: rgba(0, 212, 255, 0.1); transform: translateY(-5px); }
+        .card-name { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+        .card-balance { font-size: 22px; font-weight: 200; }
+
+        .siri-orb {
+            width: 150px; height: 150px; border-radius: 50%;
+            background: radial-gradient(circle at center, var(--accent), #0052d4, transparent);
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.1); margin: 30px 0;
+            transition: 0.5s; filter: blur(1px);
+        }
+        .speaking { animation: pulse 1.5s infinite; filter: blur(0px); box-shadow: 0 0 60px var(--accent); }
+        .waiting-key { background: radial-gradient(circle at center, var(--safe), #6b21a8, transparent); }
+        .error-state { background: radial-gradient(circle at center, var(--error), #8b0000, transparent); }
+
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+        #status { font-size: 12px; color: #666; letter-spacing: 1px; margin-bottom: 20px; text-align: center; height: 20px; }
+
+        .btn-ios { 
+            padding: 16px 40px; background: white; color: black; border: none; 
+            border-radius: 30px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        }
+
+        #mail-pop {
+            position: fixed; bottom: -100px; background: #22c55e; color: white;
+            padding: 15px 25px; border-radius: 20px; display: flex; align-items: center;
+            gap: 10px; transition: 0.5s; z-index: 300; font-size: 13px; font-weight: 600;
+        }
+        #mail-pop.show { bottom: 30px; }
+    </style>
+</head>
+<body>
+
+    <div class="config-icon" onclick="toggleConfig()">⚙️</div>
+
+    <div id="config-panel">
+        <div class="section">
+            <h3>Seguridad</h3>
+            <input type="text" id="username" placeholder="Tu Nombre">
+            <input type="password" id="userword" placeholder="Palabra Clave">
+        </div>
+        
+        <div class="section">
+            <h3>Agenda</h3>
+            <input type="text" id="contactName" placeholder="Nombre (ej: Juan)">
+            <input type="email" id="contactEmail" placeholder="Correo (ej: juan@gmail.com)">
+            <button class="btn-ios" onclick="agregarContacto()" style="width: 100%; margin-top: 10px; font-size: 12px;">REGISTRAR</button>
+            <div id="lista-contactos" style="font-size: 11px; margin-top: 15px; color: #888;"></div>
+        </div>
+        <button class="btn-ios" onclick="guardarTodo()">GUARDAR</button>
+    </div>
+
+    <div class="cards-container" id="cards-display"></div>
+    <div id="orb" class="siri-orb"></div>
+    <div id="status">SISTEMA LISTO</div>
+    <button id="btnStart" class="btn-ios" onclick="iniciarAsistente()">INICIAR ASISTENTE</button>
+    <div id="mail-pop">✉️ Correo Enviado con Éxito</div>
+
+    <script>
+        let user = localStorage.getItem('u_name') || "Usuario";
+        let key = localStorage.getItem('u_key') || "secreto";
+        let contacts = JSON.parse(localStorage.getItem('u_contacts')) || [];
+        let cards = JSON.parse(localStorage.getItem('u_cards')) || [
+            { nombre: "Platinum Card", saldo: 25000.00 },
+            { nombre: "Savings Plus", saldo: 5000.00 }
+        ];
+
+        let cardActiva = 0, estado = "reposo", montoP = 0, destinoP = null;
+
+        function renderUI() {
+            document.getElementById('cards-display').innerHTML = cards.map((c, i) => `
+                <div class="card ${cardActiva === i ? 'active' : ''}" onclick="cardActiva=${i}; renderUI();">
+                    <div class="card-name">${c.nombre}</div>
+                    <div class="card-balance">$${c.saldo.toLocaleString()}</div>
+                </div>
+            `).join('');
+            document.getElementById('lista-contactos').innerHTML = "Agenda: " + (contacts.map(c => c.nombre).join(", ") || "Vacía");
+        }
+        renderUI();
+
+        function enviarEmailReal(nombre, email, monto) {
+            const params = { to_name: nombre, to_email: email, from_name: user, amount: monto, fecha: new Date().toLocaleDateString() };
+            emailjs.send(ENV.SERVICE_ID, ENV.TEMPLATE_ID, params)
+                .then(() => {
+                    const pop = document.getElementById('mail-pop');
+                    pop.classList.add('show');
+                    setTimeout(() => pop.classList.remove('show'), 4000);
+                });
+        }
+
+        function agregarContacto() {
+            const nom = document.getElementById('contactName').value.trim().toLowerCase();
+            const mail = document.getElementById('contactEmail').value.trim();
+            if(nom && mail) { contacts.push({ nombre: nom, email: mail }); renderUI(); }
+        }
+
+        function guardarTodo() {
+            localStorage.setItem('u_name', document.getElementById('username').value.trim() || user);
+            localStorage.setItem('u_key', document.getElementById('userword').value.toLowerCase().trim() || key);
+            localStorage.setItem('u_contacts', JSON.stringify(contacts));
+            toggleConfig();
+        }
+
+        function toggleConfig() { document.getElementById('config-panel').classList.toggle('open'); }
+
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'es-MX';
+        recognition.continuous = true;
+
+        function hablar(t) {
+            window.speechSynthesis.cancel();
+            const m = new SpeechSynthesisUtterance(t);
+            m.lang = 'es-MX';
+            m.onstart = () => document.getElementById('orb').classList.add('speaking');
+            m.onend = () => document.getElementById('orb').classList.remove('speaking');
+            window.speechSynthesis.speak(m);
+        }
+
+        recognition.onresult = (e) => {
+            const text = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
+            document.getElementById('status').innerText = text.toUpperCase();
+            
+            if (estado === "reposo") {
+                if (text.includes("transferencia") || text.includes("enviar")) {
+                    estado = "destinatario"; hablar("¿A quién desea enviar fondos?");
+                }
+            } else if (estado === "destinatario") {
+                const encontrado = contacts.find(c => text.includes(c.nombre));
+                if (encontrado) { destinoP = encontrado; estado = "monto"; hablar(`Monto para ${destinoP.nombre}?`); }
+                else { hablar("No está en la agenda."); estado = "reposo"; }
+            } else if (estado === "monto") {
+                const n = text.match(/\d+/);
+                if (n) { montoP = parseInt(n[0]); estado = "clave"; hablar(`Diga su clave para enviar ${montoP} pesos.`); }
+            } else if (estado === "clave") {
+                if (text.includes(key)) {
+                    if (cards[cardActiva].saldo >= montoP) {
+                        cards[cardActiva].saldo -= montoP;
+                        localStorage.setItem('u_cards', JSON.stringify(cards));
+                        enviarEmailReal(destinoP.nombre, destinoP.email, montoP);
+                        hablar("Transferencia autorizada y correo enviado.");
+                        estado = "reposo"; renderUI();
+                    } else { hablar("Saldo insuficiente."); estado = "reposo"; }
+                } else { document.getElementById('orb').classList.add('error-state'); }
+            }
+        };
+
+        async function iniciarAsistente() {
+            recognition.start();
+            document.getElementById('btnStart').style.display = 'none';
+            hablar(`Sistema activo. Hola ${user}.`);
+        }
+        recognition.onend = () => recognition.start();
+    </script>
+</body>
+</html>
